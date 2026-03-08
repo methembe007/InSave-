@@ -1,0 +1,194 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Primary Database (Write Operations)
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: postgres-primary
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: insavein
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      REPLICATION_PASSWORD: replicator_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./postgres/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./postgres/init-primary.sh:/docker-entrypoint-initdb.d/init-primary.sh:ro
+      - ./migrations:/migrations:ro
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - insavein-network
+
+  # PostgreSQL Read Replica 1 (Read Operations - Education & Notification Services)
+  postgres-replica1:
+    image: postgres:15-alpine
+    container_name: postgres-replica1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: insavein
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: 5432
+      REPLICATION_USER: replicator
+      REPLICATION_PASSWORD: replicator_password
+      REPLICA_NAME: replica1
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_replica1_data:/var/lib/postgresql/data
+      - ./postgres/replica/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/init-replica.sh:/docker-entrypoint-initdb.d/init-replica.sh:ro
+    command: >
+      bash -c "
+      if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+        /docker-entrypoint-initdb.d/init-replica.sh
+      fi &&
+      postgres -c config_file=/etc/postgresql/postgresql.conf
+      "
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - insavein-network
+
+  # PostgreSQL Read Replica 2 (Read Operations - Analytics Service)
+  postgres-replica2:
+    image: postgres:15-alpine
+    container_name: postgres-replica2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: insavein
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: 5432
+      REPLICATION_USER: replicator
+      REPLICATION_PASSWORD: replicator_password
+      REPLICA_NAME: replica2
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_replica2_data:/var/lib/postgresql/data
+      - ./postgres/replica/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/init-replica.sh:/docker-entrypoint-initdb.d/init-replica.sh:ro
+    command: >
+      bash -c "
+      if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+        /docker-entrypoint-initdb.d/init-replica.sh
+      fi &&
+      postgres -c config_file=/etc/postgresql/postgresql.conf
+      "
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - insavein-network
+
+  # PgBouncer Connection Pooler
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres-primary:5432/insavein"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "6432:5432"
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica1:
+        condition: service_healthy
+      postgres-replica2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h localhost -p 5432 -U postgres -d pgbouncer -c 'SHOW POOLS;' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - insavein-network
+
+  # Replication Lag Monitor
+  replication-monitor:
+    image: postgres:15-alpine
+    container_name: replication-monitor
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PRIMARY_HOST: postgres-primary
+    volumes:
+      - ./monitoring/check-replication-lag.sh:/usr/local/bin/check-replication-lag.sh:ro
+    command: >
+      sh -c "chmod +x /usr/local/bin/check-replication-lag.sh && 
+             while true; do 
+               /usr/local/bin/check-replication-lag.sh; 
+               sleep 10; 
+             done"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica1:
+        condition: service_healthy
+      postgres-replica2:
+        condition: service_healthy
+    networks:
+      - insavein-network
+    profiles:
+      - monitoring
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: insavein-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@insavein.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres-primary
+    networks:
+      - insavein-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_primary_data:
+    driver: local
+  postgres_replica1_data:
+    driver: local
+  postgres_replica2_data:
+    driver: local
+
+networks:
+  insavein-network:
+    driver: bridge

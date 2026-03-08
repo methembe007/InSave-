@@ -1,0 +1,2 @@
+"postgres" "SCRAM-SHA-256$4096:salt$hash:hash"
+"replicator" "SCRAM-SHA-256$4096:salt$hash:hash"

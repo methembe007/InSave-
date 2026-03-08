@@ -1,0 +1,17 @@
+# Ignore generated secrets files
+secrets-generated.yaml
+*-secrets.yaml
+
+# Ignore any files with actual credentials
+*.credentials
+*.key
+*.pem
+
+# Ignore backup files
+*.bak
+*.backup
+
+# Ignore temporary files
+*.tmp
+*.swp
+*~

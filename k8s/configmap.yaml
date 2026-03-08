@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: insavein-config
+  namespace: insavein
+  labels:
+    app: insavein-platform
+data:
+  # Database Configuration
+  DB_HOST: "postgres-primary.insavein.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "insavein"
+  DB_REPLICA_1_HOST: "postgres-replica-1.insavein.svc.cluster.local"
+  DB_REPLICA_2_HOST: "postgres-replica-2.insavein.svc.cluster.local"
+  DB_MAX_CONNECTIONS: "20"
+  DB_CONNECTION_TIMEOUT: "30s"
+  
+  # PgBouncer Configuration
+  PGBOUNCER_HOST: "pgbouncer.insavein.svc.cluster.local"
+  PGBOUNCER_PORT: "6432"
+  
+  # Service Endpoints
+  AUTH_SERVICE_URL: "http://auth-service.insavein.svc.cluster.local:8080"
+  USER_SERVICE_URL: "http://user-service.insavein.svc.cluster.local:8080"
+  SAVINGS_SERVICE_URL: "http://savings-service.insavein.svc.cluster.local:8080"
+  BUDGET_SERVICE_URL: "http://budget-service.insavein.svc.cluster.local:8080"
+  GOAL_SERVICE_URL: "http://goal-service.insavein.svc.cluster.local:8080"
+  EDUCATION_SERVICE_URL: "http://education-service.insavein.svc.cluster.local:8080"
+  NOTIFICATION_SERVICE_URL: "http://notification-service.insavein.svc.cluster.local:8080"
+  ANALYTICS_SERVICE_URL: "http://analytics-service.insavein.svc.cluster.local:8080"
+  
+  # JWT Configuration
+  JWT_ACCESS_TOKEN_EXPIRY: "15m"
+  JWT_REFRESH_TOKEN_EXPIRY: "168h"  # 7 days
+  JWT_ALGORITHM: "HS256"
+  
+  # Rate Limiting Configuration (Requirement 18.1)
+  RATE_LIMIT_PER_USER: "100"  # requests per minute
+  RATE_LIMIT_PER_IP: "1000"   # requests per minute
+  RATE_LIMIT_BURST: "20"
+  
+  # Application Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  ENVIRONMENT: "production"
+  
+  # Observability
+  METRICS_PORT: "9090"
+  HEALTH_CHECK_PORT: "8081"
+  TRACE_SAMPLE_RATE: "0.1"  # 10% sampling
+  
+  # Cache Configuration
+  CACHE_TTL_FINANCIAL_HEALTH: "3600"  # 1 hour in seconds
+  
+  # Notification Configuration
+  EMAIL_FROM: "noreply@insavein.com"
+  NOTIFICATION_RETRY_ATTEMPTS: "3"
+  
+  # Security Headers
+  CORS_ALLOWED_ORIGINS: "https://insavein.com,https://www.insavein.com"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+  CORS_ALLOWED_HEADERS: "Content-Type,Authorization"
+  
+  # TLS Configuration
+  TLS_MIN_VERSION: "1.3"

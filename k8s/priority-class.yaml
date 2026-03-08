@@ -1,0 +1,34 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: insavein-critical
+value: 1000000
+globalDefault: false
+description: "Critical services that must always run (Auth, Database)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: insavein-high
+value: 100000
+globalDefault: false
+description: "High priority services (User, Savings, Budget)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: insavein-medium
+value: 10000
+globalDefault: true
+description: "Medium priority services (Goal, Analytics)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: insavein-low
+value: 1000
+globalDefault: false
+description: "Low priority services (Education, Notification)"
