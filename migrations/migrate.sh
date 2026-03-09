@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Default values
 MIGRATIONS_DIR="migrations"
-DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/insavein?sslmode=disable}"
+DATABASE_URL="${DATABASE_URL:-postgres://insavein_user:in37%23QnSaveL3inP@localhost:5432/insavein_db?sslmode=disable}"
 
 # Print colored message
 print_message() {
@@ -51,7 +51,7 @@ Commands:
 
 Environment Variables:
     DATABASE_URL        PostgreSQL connection string
-                        Default: postgresql://postgres:postgres@localhost:5432/insavein?sslmode=disable
+                        Default: postgres://insavein_user:in37%23QnSaveL3inP@localhost:5432/insavein_db?sslmode=disable
 
 Examples:
     $0 up                    # Apply all pending migrations

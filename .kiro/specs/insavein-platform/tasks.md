@@ -37,15 +37,15 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - _Requirements: 18.1, 20.1_
 
 
-- [ ] 2. Auth Service Implementation
-  - [ ] 2.1 Create Auth Service project structure and core interfaces
+- [x] 2. Auth Service Implementation
+  - [x] 2.1 Create Auth Service project structure and core interfaces
     - Initialize Go module for auth-service
     - Define Service interface with Register, Login, RefreshToken, ValidateToken, Logout methods
     - Create request/response structs (RegisterRequest, LoginRequest, AuthResponse, TokenClaims)
     - Set up project structure (cmd, internal, pkg directories)
     - _Requirements: 1.1, 1.5, 2.1_
   
-  - [ ] 2.2 Implement user registration with password hashing
+  - [x] 2.2 Implement user registration with password hashing
     - Implement Register method with bcrypt password hashing (cost factor 12)
     - Add email uniqueness validation
     - Add password length validation (minimum 8 characters)
@@ -58,7 +58,7 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - Test that passwords are always hashed with bcrypt cost ≥ 12
     - Test that plaintext passwords never appear in responses
   
-  - [ ] 2.4 Implement JWT token generation and validation
+  - [x] 2.4 Implement JWT token generation and validation
     - Implement Login method with credential verification
     - Generate JWT access tokens (15 min expiry) and refresh tokens (7 days expiry)
     - Use HMAC-SHA256 for token signing
@@ -72,19 +72,19 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - **Property 3: Token Refresh Round Trip**
     - **Validates: Requirements 1.5, 2.3**
   
-  - [ ] 2.6 Implement token refresh and logout functionality
+  - [x] 2.6 Implement token refresh and logout functionality
     - Implement RefreshToken method to issue new tokens
     - Implement Logout method with token invalidation
     - Add token revocation list (in-memory or Redis)
     - _Requirements: 1.5, 2.3, 2.4_
   
-  - [ ] 2.7 Add rate limiting for login attempts
+  - [x] 2.7 Add rate limiting for login attempts
     - Implement rate limiter (5 attempts per 15 minutes per email)
     - Add temporary blocking on exceeded attempts
     - Return appropriate error messages
     - _Requirements: 1.7, 1.8_
   
-  - [ ] 2.8 Create HTTP handlers and routes for Auth Service
+  - [x] 2.8 Create HTTP handlers and routes for Auth Service
     - Implement POST /api/auth/register handler
     - Implement POST /api/auth/login handler
     - Implement POST /api/auth/refresh handler
@@ -99,20 +99,20 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - Test rate limiting behavior
 
 
-- [ ] 3. User Profile Service Implementation
-  - [ ] 3.1 Create User Service project structure and interfaces
+- [x] 3. User Profile Service Implementation
+  - [x] 3.1 Create User Service project structure and interfaces
     - Initialize Go module for user-service
     - Define Service interface with GetProfile, UpdateProfile, GetPreferences, UpdatePreferences, DeleteAccount methods
     - Create UserProfile and UserPreferences structs
     - _Requirements: 3.1, 3.2, 3.3_
   
-  - [ ] 3.2 Implement profile retrieval and update operations
+  - [x] 3.2 Implement profile retrieval and update operations
     - Implement GetProfile method to fetch user data
     - Implement UpdateProfile method with field validation
     - Add authorization check (users can only access own profile)
     - _Requirements: 3.1, 3.2, 3.5, 15.4_
   
-  - [ ] 3.3 Implement user preferences management
+  - [x] 3.3 Implement user preferences management
     - Implement GetPreferences method
     - Implement UpdatePreferences method for currency, notifications, theme settings
     - Store preferences as JSONB in database
@@ -123,7 +123,7 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - **Validates: Requirements 3.2, 3.3**
     - Test that reading profile after update returns updated values
   
-  - [ ] 3.5 Implement account deletion with cascade
+  - [x] 3.5 Implement account deletion with cascade
     - Implement DeleteAccount method
     - Ensure cascade deletion of all user data (transactions, budgets, goals)
     - Use database transaction for atomicity
@@ -133,7 +133,7 @@ This implementation plan breaks down the InSavein financial discipline platform 
     - **Property 21: Cascade Deletion Completeness**
     - **Validates: Requirements 3.4, 9.5**
   
-  - [ ] 3.7 Create HTTP handlers and routes for User Service
+  - [x] 3.7 Create HTTP handlers and routes for User Service
     - Implement GET /api/user/profile handler
     - Implement PUT /api/user/profile handler
     - Implement GET /api/user/preferences handler

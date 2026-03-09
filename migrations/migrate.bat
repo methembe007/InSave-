@@ -6,7 +6,7 @@ setlocal enabledelayedexpansion
 
 REM Default values
 set MIGRATIONS_DIR=migrations
-if "%DATABASE_URL%"=="" set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/insavein?sslmode=disable
+if "%DATABASE_URL%"=="" set DATABASE_URL=postgres://insavein_user:in37QnSaveL3inP@localhost:5432/insavein?sslmode=disable
 
 REM Check if migrate is installed
 where migrate >nul 2>nul
@@ -156,7 +156,7 @@ echo   help                Show this help message
 echo.
 echo Environment Variables:
 echo   DATABASE_URL        PostgreSQL connection string
-echo                       Default: postgresql://postgres:postgres@localhost:5432/insavein?sslmode=disable
+echo                       Default: postgres://insavein_user:in37%%23QnSaveL3inP@localhost:5432/insavein_db?sslmode=disable
 echo.
 echo Examples:
 echo   migrate.bat up                    # Apply all pending migrations
