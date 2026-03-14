@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Primary Database (Write Operations)
   postgres-primary:
@@ -17,7 +15,8 @@ services:
       - postgres_primary_data:/var/lib/postgresql/data
       - ./postgres/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ./postgres/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./postgres/init-primary.sh:/docker-entrypoint-initdb.d/init-primary.sh:ro
+      - ./postgres/init-primary.sh:/docker-entrypoint-initdb.d/01-init-primary.sh:ro
+      - ./postgres/create-app-user.sh:/docker-entrypoint-initdb.d/02-create-app-user.sh:ro
       - ./migrations:/migrations:ro
     command: >
       postgres
@@ -163,6 +162,291 @@ services:
       - insavein-network
     profiles:
       - monitoring
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      PORT: 8080
+      DB_HOST: postgres-primary
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_EXPIRY: 15m
+      REFRESH_TOKEN_EXPIRY: 168h
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      PORT: 8081
+      DB_HOST: postgres-primary
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Savings Service
+  savings-service:
+    build:
+      context: ./savings-service
+      dockerfile: Dockerfile
+    container_name: savings-service
+    environment:
+      PORT: 8082
+      DB_HOST: postgres-primary
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Budget Service
+  budget-service:
+    build:
+      context: ./budget-service
+      dockerfile: Dockerfile
+    container_name: budget-service
+    environment:
+      PORT: 8083
+      DB_HOST: postgres-primary
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Goal Service
+  goal-service:
+    build:
+      context: ./goal-service
+      dockerfile: Dockerfile
+    container_name: goal-service
+    environment:
+      PORT: 8005
+      DB_HOST: postgres-primary
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Education Service
+  education-service:
+    build:
+      context: ./education-service
+      dockerfile: Dockerfile
+    container_name: education-service
+    environment:
+      PORT: 8085
+      DB_HOST: postgres-replica1
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres-replica1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      PORT: 8086
+      DB_HOST: postgres-replica1
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: 587
+      SMTP_USER: notifications@insavein.com
+      SMTP_PASSWORD: smtp-password
+      SMTP_FROM: notifications@insavein.com
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres-replica1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    environment:
+      PORT: 8008
+      DB_HOST: postgres-replica2
+      DB_PORT: 5432
+      DB_USER: insavein_user
+      DB_PASSWORD: insavein_password
+      DB_NAME: insavein
+      DB_SSLMODE: disable
+      JWT_SECRET: your-secret-key-change-in-production
+      CACHE_TTL: 3600
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres-replica2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - insavein-network
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      NODE_ENV: production
+      VITE_API_BASE_URL: http://localhost:8080
+      VITE_AUTH_SERVICE_URL: http://auth-service:8080
+      VITE_USER_SERVICE_URL: http://user-service:8081
+      VITE_SAVINGS_SERVICE_URL: http://savings-service:8082
+      VITE_BUDGET_SERVICE_URL: http://budget-service:8083
+      VITE_GOAL_SERVICE_URL: http://goal-service:8005
+      VITE_EDUCATION_SERVICE_URL: http://education-service:8085
+      VITE_NOTIFICATION_SERVICE_URL: http://notification-service:8086
+      VITE_ANALYTICS_SERVICE_URL: http://analytics-service:8008
+    ports:
+      - "3000:3000"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      savings-service:
+        condition: service_healthy
+      budget-service:
+        condition: service_healthy
+      goal-service:
+        condition: service_healthy
+      education-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - insavein-network
 
   # Optional: pgAdmin for database management
   pgadmin:

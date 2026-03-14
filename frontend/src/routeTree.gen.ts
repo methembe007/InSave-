@@ -9,13 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SavingsRouteImport } from './routes/savings'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GoalsRouteImport } from './routes/goals'
+import { Route as EducationRouteImport } from './routes/education'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BudgetRouteImport } from './routes/budget'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EducationLessonsLessonIdRouteImport } from './routes/education.lessons.$lessonId'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SavingsRoute = SavingsRouteImport.update({
   id: '/savings',
   path: '/savings',
@@ -26,14 +38,39 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GoalsRoute = GoalsRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EducationRoute = EducationRouteImport.update({
+  id: '/education',
+  path: '/education',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BudgetRoute = BudgetRouteImport.update({
+  id: '/budget',
+  path: '/budget',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -46,58 +83,131 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EducationLessonsLessonIdRoute =
+  EducationLessonsLessonIdRouteImport.update({
+    id: '/lessons/$lessonId',
+    path: '/lessons/$lessonId',
+    getParentRoute: () => EducationRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/analytics': typeof AnalyticsRoute
+  '/budget': typeof BudgetRoute
   '/dashboard': typeof DashboardRoute
+  '/education': typeof EducationRouteWithChildren
+  '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/savings': typeof SavingsRoute
+  '/settings': typeof SettingsRoute
+  '/education/lessons/$lessonId': typeof EducationLessonsLessonIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/analytics': typeof AnalyticsRoute
+  '/budget': typeof BudgetRoute
   '/dashboard': typeof DashboardRoute
+  '/education': typeof EducationRouteWithChildren
+  '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/savings': typeof SavingsRoute
+  '/settings': typeof SettingsRoute
+  '/education/lessons/$lessonId': typeof EducationLessonsLessonIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/analytics': typeof AnalyticsRoute
+  '/budget': typeof BudgetRoute
   '/dashboard': typeof DashboardRoute
+  '/education': typeof EducationRouteWithChildren
+  '/goals': typeof GoalsRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/savings': typeof SavingsRoute
+  '/settings': typeof SettingsRoute
+  '/education/lessons/$lessonId': typeof EducationLessonsLessonIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/dashboard' | '/login' | '/register' | '/savings'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/analytics'
+    | '/budget'
+    | '/dashboard'
+    | '/education'
+    | '/goals'
+    | '/login'
+    | '/profile'
+    | '/register'
+    | '/savings'
+    | '/settings'
+    | '/education/lessons/$lessonId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/dashboard' | '/login' | '/register' | '/savings'
+  to:
+    | '/'
+    | '/about'
+    | '/analytics'
+    | '/budget'
+    | '/dashboard'
+    | '/education'
+    | '/goals'
+    | '/login'
+    | '/profile'
+    | '/register'
+    | '/savings'
+    | '/settings'
+    | '/education/lessons/$lessonId'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/analytics'
+    | '/budget'
     | '/dashboard'
+    | '/education'
+    | '/goals'
     | '/login'
+    | '/profile'
     | '/register'
     | '/savings'
+    | '/settings'
+    | '/education/lessons/$lessonId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  BudgetRoute: typeof BudgetRoute
   DashboardRoute: typeof DashboardRoute
+  EducationRoute: typeof EducationRouteWithChildren
+  GoalsRoute: typeof GoalsRoute
   LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   SavingsRoute: typeof SavingsRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/savings': {
       id: '/savings'
       path: '/savings'
@@ -112,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -119,11 +236,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/goals': {
+      id: '/goals'
+      path: '/goals'
+      fullPath: '/goals'
+      preLoaderRoute: typeof GoalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/education': {
+      id: '/education'
+      path: '/education'
+      fullPath: '/education'
+      preLoaderRoute: typeof EducationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/budget': {
+      id: '/budget'
+      path: '/budget'
+      fullPath: '/budget'
+      preLoaderRoute: typeof BudgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -140,16 +285,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/education/lessons/$lessonId': {
+      id: '/education/lessons/$lessonId'
+      path: '/lessons/$lessonId'
+      fullPath: '/education/lessons/$lessonId'
+      preLoaderRoute: typeof EducationLessonsLessonIdRouteImport
+      parentRoute: typeof EducationRoute
+    }
   }
 }
+
+interface EducationRouteChildren {
+  EducationLessonsLessonIdRoute: typeof EducationLessonsLessonIdRoute
+}
+
+const EducationRouteChildren: EducationRouteChildren = {
+  EducationLessonsLessonIdRoute: EducationLessonsLessonIdRoute,
+}
+
+const EducationRouteWithChildren = EducationRoute._addFileChildren(
+  EducationRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  BudgetRoute: BudgetRoute,
   DashboardRoute: DashboardRoute,
+  EducationRoute: EducationRouteWithChildren,
+  GoalsRoute: GoalsRoute,
   LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   SavingsRoute: SavingsRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,0 +1,51 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+auth-service
+auth-service.exe
+bin/
+
+# Test files
+*_test.go
+test/
+coverage/
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+docs/
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.test
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Temporary
+tmp/
+temp/
+*.tmp

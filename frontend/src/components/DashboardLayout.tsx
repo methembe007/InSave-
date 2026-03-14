@@ -8,11 +8,13 @@ import {
   BookOpen,
   BarChart3,
   User,
+  Settings,
   Menu,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../lib/auth/context'
+import { NotificationsDropdown } from './NotificationsDropdown'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -31,6 +33,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Goals', href: '/goals', icon: Target },
     { name: 'Education', href: '/education', icon: BookOpen },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ]
 
   const isActive = (href: string) => location.pathname === href
@@ -123,6 +127,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="lg:pl-64">
+        {/* Desktop header */}
+        <header className="hidden lg:block sticky top-0 z-30 bg-[var(--island-bg)] border-b border-[var(--line)] px-8 py-4">
+          <div className="flex items-center justify-end">
+            <NotificationsDropdown />
+          </div>
+        </header>
+
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-30 bg-[var(--island-bg)] border-b border-[var(--line)] px-4 py-3">
           <div className="flex items-center justify-between">
@@ -133,7 +144,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold">InSavein</h1>
-            <div className="w-10" /> {/* Spacer for centering */}
+            <NotificationsDropdown />
           </div>
         </header>
 

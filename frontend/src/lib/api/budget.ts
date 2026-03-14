@@ -39,4 +39,10 @@ export class BudgetService {
   async getAlerts(): Promise<BudgetAlert[]> {
     return this.client.get<BudgetAlert[]>('/api/budget/alerts')
   }
+
+  async getSpendingHistory(budgetId: string): Promise<SpendingTransaction[]> {
+    return this.client.get<SpendingTransaction[]>(
+      `/api/budget/${budgetId}/spending`
+    )
+  }
 }

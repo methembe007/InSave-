@@ -9,14 +9,14 @@ import { AnalyticsService } from './analytics'
 import { NotificationService } from './notifications'
 
 // Service URLs from environment variables
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://localhost:8081'
-const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8082'
-const SAVINGS_SERVICE_URL = import.meta.env.VITE_SAVINGS_SERVICE_URL || 'http://localhost:8083'
-const BUDGET_SERVICE_URL = import.meta.env.VITE_BUDGET_SERVICE_URL || 'http://localhost:8084'
-const GOAL_SERVICE_URL = import.meta.env.VITE_GOAL_SERVICE_URL || 'http://localhost:8085'
-const EDUCATION_SERVICE_URL = import.meta.env.VITE_EDUCATION_SERVICE_URL || 'http://localhost:8086'
-const NOTIFICATION_SERVICE_URL = import.meta.env.VITE_NOTIFICATION_SERVICE_URL || 'http://localhost:8087'
-const ANALYTICS_SERVICE_URL = import.meta.env.VITE_ANALYTICS_SERVICE_URL || 'http://localhost:8088'
+const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://localhost:8080'
+const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8081'
+const SAVINGS_SERVICE_URL = import.meta.env.VITE_SAVINGS_SERVICE_URL || 'http://localhost:8082'
+const BUDGET_SERVICE_URL = import.meta.env.VITE_BUDGET_SERVICE_URL || 'http://localhost:8083'
+const GOAL_SERVICE_URL = import.meta.env.VITE_GOAL_SERVICE_URL || 'http://localhost:8005'
+const EDUCATION_SERVICE_URL = import.meta.env.VITE_EDUCATION_SERVICE_URL || 'http://localhost:8085'
+const NOTIFICATION_SERVICE_URL = import.meta.env.VITE_NOTIFICATION_SERVICE_URL || 'http://localhost:8086'
+const ANALYTICS_SERVICE_URL = import.meta.env.VITE_ANALYTICS_SERVICE_URL || 'http://localhost:8008'
 
 export function createApiServices(
   getToken: () => string | null,

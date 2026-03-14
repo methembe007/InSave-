@@ -14,6 +14,7 @@ import (
 	"github.com/insavein/auth-service/internal/handlers"
 	"github.com/insavein/auth-service/internal/middleware"
 	"github.com/insavein/auth-service/pkg/database"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -87,10 +88,20 @@ func main() {
 		w.Write([]byte(`{"status":"ready"}`))
 	})
 
+	// Setup CORS
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+
 	// Create server
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      mux,
+		Handler:      c.Handler(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -142,7 +153,7 @@ func loadConfig() Config {
 		DBPort:     getEnvAsInt("DB_PORT", 5432),
 		DBUser:     getEnv("DB_USER", "insavein_user"),
 		DBPassword: getEnv("DB_PASSWORD", "insavein_password"),
-		DBName:     getEnv("DB_NAME", "insavein_db"),
+		DBName:     getEnv("DB_NAME", "insavein"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
 	}

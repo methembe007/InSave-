@@ -1,5 +1,8 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:alpine AS builder
+
+# Set Go toolchain to auto-download required version
+ENV GOTOOLCHAIN=auto
 
 WORKDIR /app
 
