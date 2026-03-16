@@ -7,13 +7,22 @@ metadata:
     app: insavein-platform
 data:
   # Database Configuration
-  DB_HOST: "postgres-primary.insavein.svc.cluster.local"
+  DB_HOST: "postgres.insavein.svc.cluster.local"
   DB_PORT: "5432"
   DB_NAME: "insavein"
-  DB_REPLICA_1_HOST: "postgres-replica-1.insavein.svc.cluster.local"
-  DB_REPLICA_2_HOST: "postgres-replica-2.insavein.svc.cluster.local"
+  DB_SSLMODE: "require"
+  DB_REPLICA_HOST: "postgres-replica-1.insavein.svc.cluster.local"
+  DB_REPLICA_PORT: "5432"
   DB_MAX_CONNECTIONS: "20"
   DB_CONNECTION_TIMEOUT: "30s"
+  
+  # Legacy keys for backward compatibility
+  db_host: "postgres.insavein.svc.cluster.local"
+  db_port: "5432"
+  db_name: "insavein"
+  postgres.primary.host: "postgres.insavein.svc.cluster.local"
+  postgres.primary.port: "5432"
+  postgres.database: "insavein"
   
   # PgBouncer Configuration
   PGBOUNCER_HOST: "pgbouncer.insavein.svc.cluster.local"

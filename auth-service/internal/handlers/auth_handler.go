@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/insavein/auth-service/internal/auth"
+	"github.com/insavein/auth-service/internal/middleware"
 )
 
 // AuthHandler handles HTTP requests for authentication
@@ -73,6 +74,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Increment registration metric
+	middleware.IncrementRegistrations()
+
 	respondJSON(w, http.StatusCreated, response)
 }
 
@@ -101,17 +105,24 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	response, err := h.service.Login(r.Context(), req)
 	if err != nil {
+		// Increment login failure metric
+		middleware.IncrementLoginFailures()
+		
 		if strings.Contains(err.Error(), "invalid credentials") {
 			respondError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
 		if strings.Contains(err.Error(), "too many login attempts") {
+			middleware.IncrementRateLimitHits()
 			respondError(w, http.StatusTooManyRequests, err.Error())
 			return
 		}
 		respondError(w, http.StatusInternalServerError, "failed to login")
 		return
 	}
+
+	// Increment successful login metric
+	middleware.IncrementLogins()
 
 	respondJSON(w, http.StatusOK, response)
 }

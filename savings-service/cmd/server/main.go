@@ -136,7 +136,7 @@ func loadConfig() Config {
 		DBPort:     getEnvAsInt("DB_PORT", 5432),
 		DBUser:     getEnv("DB_USER", "insavein_user"),
 		DBPassword: getEnv("DB_PASSWORD", "insavein_password"),
-		DBName:     getEnv("DB_NAME", "insavein_db"),
+		DBName:     getEnv("DB_NAME", "insavein"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 	}
 }

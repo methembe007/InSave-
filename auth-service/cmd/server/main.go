@@ -14,6 +14,7 @@ import (
 	"github.com/insavein/auth-service/internal/handlers"
 	"github.com/insavein/auth-service/internal/middleware"
 	"github.com/insavein/auth-service/pkg/database"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 )
 
@@ -50,14 +51,18 @@ func main() {
 	// Setup routes
 	mux := http.NewServeMux()
 
-	// Public routes
-	mux.HandleFunc("/api/auth/register", authHandler.Register)
-	mux.HandleFunc("/api/auth/login", authHandler.Login)
-	mux.HandleFunc("/api/auth/refresh", authHandler.RefreshToken)
-	mux.HandleFunc("/api/auth/validate", authHandler.ValidateToken)
+	// Metrics endpoint (on port 9090)
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
 
-	// Protected routes
-	mux.HandleFunc("/api/auth/logout", authMiddleware.Authenticate(authHandler.Logout))
+	// Public routes (with metrics)
+	mux.HandleFunc("/api/auth/register", middleware.MetricsMiddleware(authHandler.Register))
+	mux.HandleFunc("/api/auth/login", middleware.MetricsMiddleware(authHandler.Login))
+	mux.HandleFunc("/api/auth/refresh", middleware.MetricsMiddleware(authHandler.RefreshToken))
+	mux.HandleFunc("/api/auth/validate", middleware.MetricsMiddleware(authHandler.ValidateToken))
+
+	// Protected routes (with metrics)
+	mux.HandleFunc("/api/auth/logout", middleware.MetricsMiddleware(authMiddleware.Authenticate(authHandler.Logout)))
 
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +112,22 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Create metrics server
+	metricsServer := &http.Server{
+		Addr:         ":9090",
+		Handler:      metricsMux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+
+	// Start metrics server in goroutine
+	go func() {
+		log.Println("Metrics server starting on port 9090")
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
+
 	// Start server in goroutine
 	go func() {
 		log.Printf("Auth service starting on port %d", cfg.Port)
@@ -126,8 +147,12 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// Shutdown both servers
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+	if err := metricsServer.Shutdown(ctx); err != nil {
+		log.Printf("Metrics server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server exited")

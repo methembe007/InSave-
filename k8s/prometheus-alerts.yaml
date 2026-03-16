@@ -1,0 +1,242 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: insavein
+data:
+  alerts.yml: |
+    groups:
+    - name: service_alerts
+      interval: 30s
+      rules:
+      # Critical: Service Down
+      - alert: ServiceDown
+        expr: up{job=~".*-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute."
+          runbook_url: "https://runbook.insavein.com/alerts/service-down"
+
+      # Critical: High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+            /
+            sum(rate(http_requests_total[5m])) by (job)
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has error rate of {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://runbook.insavein.com/alerts/high-error-rate"
+
+      # Warning: Elevated Error Rate
+      - alert: ElevatedErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+            /
+            sum(rate(http_requests_total[5m])) by (job)
+          ) * 100 > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Elevated error rate on {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has error rate of {{ $value | humanizePercentage }} (threshold: 1%)"
+
+      # Critical: High Response Time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "Service {{ $labels.job }} p99 response time is {{ $value }}s (threshold: 5s)"
+          runbook_url: "https://runbook.insavein.com/alerts/high-response-time"
+
+      # Warning: Elevated Response Time
+      - alert: ElevatedResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Elevated response time on {{ $labels.job }}"
+          description: "Service {{ $labels.job }} p95 response time is {{ $value }}s (threshold: 1s)"
+
+    - name: database_alerts
+      interval: 30s
+      rules:
+      # Critical: Database Connection Failure
+      - alert: DatabaseConnectionFailure
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Cannot connect to PostgreSQL database for more than 1 minute."
+          runbook_url: "https://runbook.insavein.com/alerts/database-down"
+
+      # Critical: High Database Connections
+      - alert: HighDatabaseConnections
+        expr: |
+          pg_stat_database_numbackends{datname="insavein"}
+          /
+          pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+          runbook_url: "https://runbook.insavein.com/alerts/high-db-connections"
+
+      # Warning: Replication Lag
+      - alert: DatabaseReplicationLag
+        expr: pg_replication_lag > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "High database replication lag"
+          description: "Database replication lag is {{ $value }}s (threshold: 5s)"
+          runbook_url: "https://runbook.insavein.com/alerts/replication-lag"
+
+    - name: resource_alerts
+      interval: 30s
+      rules:
+      # Critical: High CPU Usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+
+      # Critical: High Memory Usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+
+      # Critical: High Disk Usage
+      - alert: HighDiskUsage
+        expr: |
+          100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+          runbook_url: "https://runbook.insavein.com/alerts/high-disk-usage"
+
+      # Warning: Pod Restart
+      - alert: PodRestarting
+        expr: rate(kube_pod_container_status_restarts_total{namespace="insavein"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Pod {{ $labels.pod }} is restarting"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes."
+
+      # Critical: Pod CrashLooping
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total{namespace="insavein"}[15m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes."
+          runbook_url: "https://runbook.insavein.com/alerts/pod-crash-loop"
+
+    - name: business_alerts
+      interval: 1m
+      rules:
+      # Warning: High Login Failure Rate
+      - alert: HighLoginFailureRate
+        expr: |
+          rate(auth_login_failures_total[5m])
+          /
+          rate(auth_logins_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High login failure rate"
+          description: "Login failure rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      # Warning: High Rate Limit Hits
+      - alert: HighRateLimitHits
+        expr: rate(auth_rate_limit_hits_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High rate limit violations"
+          description: "Rate limit is being hit {{ $value }} times per second"
+
+      # Warning: Low Savings Activity
+      - alert: LowSavingsActivity
+        expr: rate(savings_transactions_total[1h]) < 0.1
+        for: 2h
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "Low savings transaction activity"
+          description: "Savings transactions are below normal levels: {{ $value }} transactions/sec"
+
+      # Warning: High Notification Failure Rate
+      - alert: HighNotificationFailureRate
+        expr: |
+          sum(rate(notification_failures_total[5m]))
+          /
+          sum(rate(notification_notifications_sent_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High notification failure rate"
+          description: "Notification failure rate is {{ $value | humanizePercentage }} (threshold: 10%)"

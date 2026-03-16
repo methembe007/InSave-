@@ -17,6 +17,10 @@ spec:
         app: budget-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: budget-service
         image: insavein/budget-service:latest
@@ -24,6 +28,8 @@ spec:
         ports:
         - containerPort: 8083
           name: http
+        - containerPort: 9090
+          name: metrics
         env:
         - name: PORT
           value: "8083"
@@ -59,6 +65,14 @@ spec:
             secretKeyRef:
               name: insavein-secrets
               key: JWT_SECRET
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         resources:
           requests:
             memory: "128Mi"
@@ -97,6 +111,10 @@ spec:
     targetPort: 8083
     protocol: TCP
     name: http
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
   selector:
     app: budget-service
 ---

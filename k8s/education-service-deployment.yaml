@@ -17,6 +17,10 @@ spec:
         app: education-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: education-service
         image: education-service:latest
@@ -24,6 +28,8 @@ spec:
         ports:
         - containerPort: 8085
           name: http
+        - containerPort: 9090
+          name: metrics
         env:
         - name: DB_HOST
           valueFrom:
@@ -72,6 +78,14 @@ spec:
               key: JWT_SECRET
         - name: PORT
           value: "8085"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         resources:
           requests:
             memory: "128Mi"
@@ -110,6 +124,10 @@ spec:
     targetPort: 8085
     protocol: TCP
     name: http
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
   selector:
     app: education-service
 ---

@@ -1,0 +1,300 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: insavein
+data:
+  service-health.json: |
+    {
+      "dashboard": {
+        "title": "InSavein - Service Health",
+        "tags": ["insavein", "health", "services"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Request Rate (req/s)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m])) by (job)",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Error Rate (%)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job) * 100",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Response Time p95 (seconds)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le))",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Response Time p99 (seconds)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le))",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Service Uptime",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~\".*-service\"}",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }
+
+  business-metrics.json: |
+    {
+      "dashboard": {
+        "title": "InSavein - Business Metrics",
+        "tags": ["insavein", "business", "metrics"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "New User Registrations (per hour)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(auth_registrations_total[1h]) * 3600",
+                "legendFormat": "Registrations/hour"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Successful Logins (per hour)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(auth_logins_total[1h]) * 3600",
+                "legendFormat": "Logins/hour"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Savings Transactions Created",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(savings_transactions_total[5m])",
+                "legendFormat": "Transactions/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Total Amount Saved",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "savings_amount_total",
+                "legendFormat": "Total Saved"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Active Goals",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "goal_active_goals",
+                "legendFormat": "Active Goals"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16}
+          },
+          {
+            "id": 6,
+            "title": "Goals Completed (per day)",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(goal_goals_completed_total[24h]) * 86400",
+                "legendFormat": "Completed/day"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16}
+          },
+          {
+            "id": 7,
+            "title": "Budget Alerts Generated",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(budget_alerts_total[5m]) by (alert_type)",
+                "legendFormat": "{{alert_type}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16}
+          },
+          {
+            "id": 8,
+            "title": "Lessons Completed (per day)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(education_lessons_completed_total[24h]) * 86400",
+                "legendFormat": "Lessons/day"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+          },
+          {
+            "id": 9,
+            "title": "Notifications Sent",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(notification_notifications_sent_total[5m]) by (type)",
+                "legendFormat": "{{type}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+          }
+        ],
+        "refresh": "1m",
+        "time": {"from": "now-24h", "to": "now"}
+      }
+    }
+
+  infrastructure.json: |
+    {
+      "dashboard": {
+        "title": "InSavein - Infrastructure",
+        "tags": ["insavein", "infrastructure", "kubernetes"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Pod Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(kube_pod_status_phase{namespace=\"insavein\", phase=\"Running\"})",
+                "legendFormat": "Running Pods"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "CPU Usage by Service",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"insavein\"}[5m])) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 3,
+            "title": "Memory Usage by Service",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{namespace=\"insavein\"}) by (pod) / 1024 / 1024",
+                "legendFormat": "{{pod}} (MB)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Database Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{datname=\"insavein\"}",
+                "legendFormat": "Active Connections"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}
+          },
+          {
+            "id": 5,
+            "title": "Database Replication Lag",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_replication_lag",
+                "legendFormat": "Lag (seconds)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14}
+          },
+          {
+            "id": 6,
+            "title": "Disk Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "100 - ((node_filesystem_avail_bytes{mountpoint=\"/\"} * 100) / node_filesystem_size_bytes{mountpoint=\"/\"})",
+                "legendFormat": "Disk Usage %"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22}
+          },
+          {
+            "id": 7,
+            "title": "Network Throughput",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(node_network_receive_bytes_total[5m])",
+                "legendFormat": "Receive"
+              },
+              {
+                "expr": "rate(node_network_transmit_bytes_total[5m])",
+                "legendFormat": "Transmit"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }

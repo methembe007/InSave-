@@ -29,6 +29,9 @@ spec:
         - containerPort: 8081
           name: http
           protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
         env:
         - name: PORT
           value: "8081"
@@ -110,6 +113,10 @@ spec:
     targetPort: 8081
     protocol: TCP
     name: http
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
   selector:
     app: user-service
 ---

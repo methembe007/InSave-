@@ -336,3 +336,16 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Built with ❤️ for financial empowerment**
+
+
+## Git commit for professionals
+
+feat: add login endpoint
+fix: resolve password hashing bug
+docs: update API documentation
+
+
+feat(api): add user registration endpoint
+fix(db): resolve connection pool exhaustion
+refactor(auth): simplify token validation logic
+docs: update installation instructions

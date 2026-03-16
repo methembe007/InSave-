@@ -5,6 +5,7 @@ metadata:
   namespace: insavein
   labels:
     app: notification-service
+    tier: backend
 spec:
   replicas: 2
   selector:
@@ -14,7 +15,12 @@ spec:
     metadata:
       labels:
         app: notification-service
+        tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: notification-service
         image: notification-service:latest
@@ -22,6 +28,8 @@ spec:
         ports:
         - containerPort: 8086
           name: http
+        - containerPort: 9090
+          name: metrics
         env:
         - name: PORT
           value: "8086"
@@ -63,6 +71,14 @@ spec:
           value: "noreply@insavein.com"
         - name: PUSH_PROVIDER
           value: "mock"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         resources:
           requests:
             memory: "128Mi"
@@ -101,6 +117,10 @@ spec:
     targetPort: 8086
     protocol: TCP
     name: http
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
   selector:
     app: notification-service
 ---

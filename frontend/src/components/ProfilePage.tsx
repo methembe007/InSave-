@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth/context'
 import { User, Mail, Calendar, Image as ImageIcon, Save, X } from 'lucide-react'
-import type { UserProfile, UpdateProfileRequest } from '../types/api'
+import type { UserProfile, UpdateProfileRequest } from '../lib/types/api'
 
 // Requirement 3.1: Display user profile information
 // Requirement 3.2: Edit profile form with API integration

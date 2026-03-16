@@ -13,7 +13,7 @@ import {
   Trash2,
   AlertTriangle,
 } from 'lucide-react'
-import type { UserPreferences } from '../types/api'
+import type { UserPreferences } from '../lib/types/api'
 
 // Requirement 3.3: Display and update user preferences
 // Requirement 3.4: Account deletion with confirmation
