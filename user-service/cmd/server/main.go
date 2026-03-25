@@ -47,6 +47,23 @@ func main() {
 	// Setup routes
 	mux := http.NewServeMux()
 
+	// CORS middleware
+	corsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Max-Age", "3600")
+
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+
 	// Protected routes (require authentication)
 	mux.HandleFunc("/api/user/profile", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
@@ -99,10 +116,10 @@ func main() {
 		w.Write([]byte(`{"status":"ready"}`))
 	})
 
-	// Create server
+	// Create server with CORS middleware
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      mux,
+		Handler:      corsMiddleware(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

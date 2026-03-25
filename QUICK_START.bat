@@ -15,7 +15,7 @@ call migrate.bat up
 cd ..
 
 echo.
-echo Step 3: Starting Auth Service (Port 8081)...
+echo Step 3: Starting Auth Service (Port 8080)...
 start "Auth Service" cmd /k "cd auth-service && go run cmd/server/main.go"
 
 echo.
@@ -23,41 +23,41 @@ echo ========================================
 echo Services Starting...
 echo ========================================
 echo.
-echo Auth Service: http://localhost:8081
+echo Auth Service: http://localhost:8080
 echo Frontend: http://localhost:3000
 echo.
 echo Check auth service health:
-echo   curl http://localhost:8081/health
+echo   curl http://localhost:8080/health
 echo.
 echo Press any key to start additional services...
 pause >nul
 
 echo.
-echo Starting User Service (Port 8082)...
+echo Starting User Service (Port 8081)...
 start "User Service" cmd /k "cd user-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Savings Service (Port 8083)...
+echo Starting Savings Service (Port 8082)...
 start "Savings Service" cmd /k "cd savings-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Budget Service (Port 8084)...
+echo Starting Budget Service (Port 8083)...
 start "Budget Service" cmd /k "cd budget-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Goal Service (Port 8085)...
+echo Starting Goal Service (Port 8005)...
 start "Goal Service" cmd /k "cd goal-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Education Service (Port 8086)...
+echo Starting Education Service (Port 8085)...
 start "Education Service" cmd /k "cd education-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Notification Service (Port 8087)...
+echo Starting Notification Service (Port 8086)...
 start "Notification Service" cmd /k "cd notification-service && go run cmd/server/main.go"
 
 echo.
-echo Starting Analytics Service (Port 8088)...
+echo Starting Analytics Service (Port 8008)...
 start "Analytics Service" cmd /k "cd analytics-service && go run cmd/server/main.go"
 
 echo.

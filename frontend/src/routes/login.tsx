@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth/context'
 
 export const Route = createFileRoute('/login')({
@@ -7,11 +7,20 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
-  const { login } = useAuth()
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Redirect if already authenticated (but not during login process)
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !isLoading) {
+      console.log('[LoginPage] Already authenticated, redirecting to dashboard')
+      navigate({ to: '/dashboard' })
+    }
+  }, [isAuthenticated, authLoading, isLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,10 +28,17 @@ function LoginPage() {
     setIsLoading(true)
 
     try {
+      console.log('[LoginPage] Submitting login form')
       // Requirement 1.6: Login with valid credentials
       await login({ email, password })
-      // Success - redirect to dashboard handled by AuthContext
+      console.log('[LoginPage] Login completed successfully')
+      
+      // Wait a tick for state to settle, then navigate
+      await new Promise(resolve => setTimeout(resolve, 100))
+      console.log('[LoginPage] Navigating to dashboard')
+      navigate({ to: '/dashboard' })
     } catch (err) {
+      console.error('[LoginPage] Login failed:', err)
       // Requirement 1.7: Invalid credentials return error
       // Don't reveal whether email or password was incorrect
       setError(err instanceof Error ? err.message : 'Invalid email or password')

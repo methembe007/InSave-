@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: InSavein Platform API
+  description: |
+    Financial discipline application API for tracking savings, budgets, goals, and financial education.
+    
+    ## Authentication
+    All endpoints (except /auth/register and /auth/login) require JWT Bearer token authentication.
+    
+    ## Rate Limiting
+    - 100 requests per minute per user
+    - 1000 requests per minute per IP
+    - Burst allowance: 20 requests
+  version: 1.0.0
+  contact:
+    name: InSavein Support
+    email: support@insavein.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.insavein.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Development server (Auth Service)
+  - url: http://localhost:8081
+    description: Development server (User Service)
+  - url: http://localhost:8082
+    description: Development server (Savings Service)
+  - url: http://localhost:8083
+    description: Development server (Budget Service)
+  - url: http://localhost:8005
+    description: Development server (Goal Service)
+  - url: http://localhost:8085
+    description: Development server (Education Service)
+  - url: http://localhost:8086
+    description: Development server (Notification Service)
+  - url: http://localhost:8008
+    description: Development server (Analytics Service)
+
+tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: User
+    description: User profile and preferences management
+  - name: Savings
+    description: Savings transaction tracking and streak management
+  - name: Budget
+    description: Budget planning and spending tracking
+  - name: Goals
+    description: Financial goal management and progress tracking
+  - name: Education
+    description: Financial education content delivery
+  - name: Notifications
+    description: Notification management
+  - name: Analytics
+    description: Financial analysis and recommendations

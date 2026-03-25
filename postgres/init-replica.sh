@@ -11,12 +11,21 @@ REPLICATION_PASSWORD=${REPLICATION_PASSWORD:-replicator_password}
 
 echo "Initializing PostgreSQL Replica: ${REPLICA_NAME}..."
 
-# Check if data directory is empty
-if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
-    echo "Data directory is empty. Setting up replication from primary..."
+# Wait for primary to be ready
+echo "Waiting for primary database to be ready..."
+until PGPASSWORD="${REPLICATION_PASSWORD}" pg_isready -h "${PRIMARY_HOST}" -p "${PRIMARY_PORT}" -U "${REPLICATION_USER}"; do
+    echo "Primary is unavailable - sleeping"
+    sleep 2
+done
+
+echo "Primary database is ready!"
+
+# Check if this is first initialization (no PG_VERSION file)
+if [ ! -f "${PGDATA}/PG_VERSION" ]; then
+    echo "First initialization detected. Setting up replication from primary..."
     
     # Remove any existing data
-    rm -rf /var/lib/postgresql/data/*
+    rm -rf ${PGDATA}/*
     
     # Use pg_basebackup to clone from primary
     echo "Running pg_basebackup from ${PRIMARY_HOST}:${PRIMARY_PORT}..."
@@ -24,7 +33,7 @@ if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
         -h "${PRIMARY_HOST}" \
         -p "${PRIMARY_PORT}" \
         -U "${REPLICATION_USER}" \
-        -D /var/lib/postgresql/data \
+        -D "${PGDATA}" \
         -Fp \
         -Xs \
         -P \
@@ -34,17 +43,18 @@ if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
     echo "Base backup complete!"
     
     # Create standby.signal file (PostgreSQL 12+)
-    touch /var/lib/postgresql/data/standby.signal
+    touch ${PGDATA}/standby.signal
     
     # Configure replica connection
-    cat >> /var/lib/postgresql/data/postgresql.auto.conf <<EOF
+    cat >> ${PGDATA}/postgresql.auto.conf <<EOF
 primary_conninfo = 'host=${PRIMARY_HOST} port=${PRIMARY_PORT} user=${REPLICATION_USER} password=${REPLICATION_PASSWORD} application_name=${REPLICA_NAME}'
 primary_slot_name = '${REPLICA_NAME}_slot'
 EOF
+    
+    # Set proper permissions
+    chmod 0700 ${PGDATA}
     
     echo "Replica configuration complete!"
 else
     echo "Data directory already initialized. Skipping setup."
 fi
-
-echo "Starting replica server..."

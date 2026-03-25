@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # Test PostgreSQL Database
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: insavein_test
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./test-data/init-test-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # Auth Service (Test)
+  auth-service-test:
+    build:
+      context: ../auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service-test
+    environment:
+      PORT: 8080
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+      JWT_EXPIRY: 15m
+      REFRESH_TOKEN_EXPIRY: 168h
+    ports:
+      - "18080:8080"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # User Service (Test)
+  user-service-test:
+    build:
+      context: ../user-service
+      dockerfile: Dockerfile
+    container_name: user-service-test
+    environment:
+      PORT: 8081
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+    ports:
+      - "18081:8081"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Savings Service (Test)
+  savings-service-test:
+    build:
+      context: ../savings-service
+      dockerfile: Dockerfile
+    container_name: savings-service-test
+    environment:
+      PORT: 8082
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+    ports:
+      - "18082:8082"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Budget Service (Test)
+  budget-service-test:
+    build:
+      context: ../budget-service
+      dockerfile: Dockerfile
+    container_name: budget-service-test
+    environment:
+      PORT: 8083
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+    ports:
+      - "18083:8083"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Goal Service (Test)
+  goal-service-test:
+    build:
+      context: ../goal-service
+      dockerfile: Dockerfile
+    container_name: goal-service-test
+    environment:
+      PORT: 8005
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+    ports:
+      - "18005:8005"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+  # Notification Service (Test)
+  notification-service-test:
+    build:
+      context: ../notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service-test
+    environment:
+      PORT: 8086
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_NAME: insavein_test
+      DB_SSLMODE: disable
+      JWT_SECRET: test-secret-key-for-integration-tests
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: 587
+      SMTP_USER: test@insavein.com
+      SMTP_PASSWORD: testpass
+      SMTP_FROM: test@insavein.com
+    ports:
+      - "18086:8086"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

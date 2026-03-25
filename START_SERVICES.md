@@ -25,17 +25,17 @@ cd auth-service
 make run
 ```
 
-The auth service will start on **port 8081** and you should see:
+The auth service will start on **port 8080** and you should see:
 ```
 Connected to database successfully
-Auth service starting on port 8081
+Auth service starting on port 8080
 ```
 
 ### Verify Auth Service is Running
 
 Open a new terminal and test:
 ```bash
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 ```
 
 Expected response:
@@ -47,43 +47,43 @@ Expected response:
 
 Once auth is working, you can start the other services:
 
-**User Service (Port 8082)**
+**User Service (Port 8081)**
 ```bash
 cd user-service
 go run cmd/server/main.go
 ```
 
-**Savings Service (Port 8083)**
+**Savings Service (Port 8082)**
 ```bash
 cd savings-service
 go run cmd/server/main.go
 ```
 
-**Budget Service (Port 8084)**
+**Budget Service (Port 8083)**
 ```bash
 cd budget-service
 go run cmd/server/main.go
 ```
 
-**Goal Service (Port 8085)**
+**Goal Service (Port 8005)**
 ```bash
 cd goal-service
 go run cmd/server/main.go
 ```
 
-**Education Service (Port 8086)**
+**Education Service (Port 8085)**
 ```bash
 cd education-service
 go run cmd/server/main.go
 ```
 
-**Notification Service (Port 8087)**
+**Notification Service (Port 8086)**
 ```bash
 cd notification-service
 go run cmd/server/main.go
 ```
 
-**Analytics Service (Port 8088)**
+**Analytics Service (Port 8008)**
 ```bash
 cd analytics-service
 go run cmd/server/main.go
@@ -104,8 +104,8 @@ go run cmd/server/main.go
 - Verify database exists: `psql -U insavein_user -d insavein_db -c "\dt"`
 
 ### "Port already in use"
-- Check if another process is using port 8081
-- Windows: `netstat -ano | findstr "8081"`
+- Check if another process is using the port
+- Windows: `netstat -ano | findstr "8080"`
 - Kill the process or change the PORT in `.env`
 
 ### "Cannot find module"
@@ -114,10 +114,11 @@ go run cmd/server/main.go
 
 ## Environment Configuration
 
-I've created `auth-service/.env` with the correct port (8081) to match your frontend configuration.
+I've verified the service ports match your frontend configuration:
 
-**Auth Service:** Port 8081 ✅
-**Frontend expects:** Port 8081 ✅
+**Auth Service:** Port 8080 ✅
+**User Service:** Port 8081 ✅
+**Frontend expects:** Ports 8080-8086, 8005, 8008 ✅
 
 ## Next Steps
 

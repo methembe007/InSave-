@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth/context'
 
 export const Route = createFileRoute('/register')({
@@ -7,7 +7,8 @@ export const Route = createFileRoute('/register')({
 })
 
 function RegisterPage() {
-  const { register } = useAuth()
+  const { register, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -17,6 +18,13 @@ function RegisterPage() {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Navigate to dashboard when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: '/dashboard' })
+    }
+  }, [isAuthenticated, navigate])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -56,7 +64,7 @@ function RegisterPage() {
 
     try {
       await register(formData)
-      // Success - redirect handled by AuthContext (Requirement 1.1)
+      // Navigation handled by useEffect above (Requirement 1.1)
     } catch (err) {
       // Handle error states with detailed messages (Requirement 17.1)
       if (err instanceof Error) {

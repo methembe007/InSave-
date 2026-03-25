@@ -1,0 +1,231 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/insavein
+  KUBE_NAMESPACE: insavein-staging
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.insavein.com
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace ${{ env.KUBE_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Update ConfigMaps and Secrets
+        run: |
+          # Apply ConfigMaps
+          kubectl apply -f k8s/configmap.yaml -n ${{ env.KUBE_NAMESPACE }}
+          
+          # Create secrets from GitHub secrets
+          kubectl create secret generic app-secrets \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET_STAGING }}" \
+            --from-literal=database-url="${{ secrets.DATABASE_URL_STAGING }}" \
+            --from-literal=smtp-password="${{ secrets.SMTP_PASSWORD }}" \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy PostgreSQL (if not exists)
+        run: |
+          if ! kubectl get statefulset postgres -n ${{ env.KUBE_NAMESPACE }} &> /dev/null; then
+            kubectl apply -f k8s/postgres-statefulset.yaml -n ${{ env.KUBE_NAMESPACE }}
+            echo "Waiting for PostgreSQL to be ready..."
+            kubectl wait --for=condition=ready pod -l app=postgres -n ${{ env.KUBE_NAMESPACE }} --timeout=300s
+          fi
+
+      - name: Run database migrations
+        run: |
+          kubectl run migration-job-${{ github.run_number }} \
+            --image=migrate/migrate:latest \
+            --restart=Never \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --env="DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}" \
+            --command -- migrate -path /migrations -database "$DATABASE_URL" up
+          
+          kubectl wait --for=condition=complete job/migration-job-${{ github.run_number }} -n ${{ env.KUBE_NAMESPACE }} --timeout=300s
+          kubectl delete job migration-job-${{ github.run_number }} -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Deploy Backend Services
+        run: |
+          SERVICES=(
+            "auth-service"
+            "user-service"
+            "savings-service"
+            "budget-service"
+            "goal-service"
+            "education-service"
+            "notification-service"
+            "analytics-service"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Deploying $service..."
+            
+            # Update image tag in deployment
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-$service:develop-${{ github.sha }} \
+              -n ${{ env.KUBE_NAMESPACE }} || \
+            kubectl apply -f k8s/${service}-deployment.yaml -n ${{ env.KUBE_NAMESPACE }}
+            
+            # Update image tag
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-$service:develop-${{ github.sha }} \
+              -n ${{ env.KUBE_NAMESPACE }}
+          done
+
+      - name: Deploy Frontend
+        run: |
+          echo "Deploying frontend..."
+          kubectl set image deployment/frontend \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:develop-${{ github.sha }} \
+            -n ${{ env.KUBE_NAMESPACE }} || \
+          kubectl apply -f k8s/frontend-deployment.yaml -n ${{ env.KUBE_NAMESPACE }}
+          
+          kubectl set image deployment/frontend \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:develop-${{ github.sha }} \
+            -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Apply Ingress and Services
+        run: |
+          kubectl apply -f k8s/ingress.yaml -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Wait for rollout to complete
+        run: |
+          SERVICES=(
+            "auth-service"
+            "user-service"
+            "savings-service"
+            "budget-service"
+            "goal-service"
+            "education-service"
+            "notification-service"
+            "analytics-service"
+            "frontend"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Waiting for $service rollout..."
+            kubectl rollout status deployment/$service -n ${{ env.KUBE_NAMESPACE }} --timeout=5m
+          done
+
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be fully ready
+          sleep 30
+          
+          # Get the staging URL
+          STAGING_URL="https://staging.insavein.com"
+          
+          # Test health endpoints
+          echo "Testing health endpoints..."
+          
+          SERVICES=(
+            "auth"
+            "user"
+            "savings"
+            "budget"
+            "goal"
+            "education"
+            "notification"
+            "analytics"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Testing $service health..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL/api/$service/health" || echo "000")
+            if [ "$response" != "200" ]; then
+              echo "❌ $service health check failed with status $response"
+              exit 1
+            fi
+            echo "✅ $service health check passed"
+          done
+          
+          # Test frontend
+          echo "Testing frontend..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL" || echo "000")
+          if [ "$response" != "200" ]; then
+            echo "❌ Frontend health check failed with status $response"
+            exit 1
+          fi
+          echo "✅ Frontend health check passed"
+          
+          echo "🎉 All smoke tests passed!"
+
+      - name: Get deployment status
+        if: always()
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n ${{ env.KUBE_NAMESPACE }}
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods -n ${{ env.KUBE_NAMESPACE }}
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events -n ${{ env.KUBE_NAMESPACE }} --sort-by='.lastTimestamp' | tail -20
+
+  notify-deployment:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: always()
+    steps:
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Staging Deployment ${{ needs.deploy-staging.result }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment ${{ needs.deploy-staging.result }}*\n\n*Repository:* ${{ github.repository }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Status:* ${{ needs.deploy-staging.result }}\n\n<https://staging.insavein.com|View Staging>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

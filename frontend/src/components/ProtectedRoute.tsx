@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useLocation } from '@tanstack/react-router'
 import { useAuth } from '../lib/auth/context'
 
 interface ProtectedRouteProps {
@@ -9,12 +9,15 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only redirect if not loading and not authenticated
+    // Also check we're not already on the login page to avoid loops
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
       navigate({ to: '/login' })
     }
-  }, [isAuthenticated, isLoading, navigate])
+  }, [isAuthenticated, isLoading, navigate, location.pathname])
 
   if (isLoading) {
     return (

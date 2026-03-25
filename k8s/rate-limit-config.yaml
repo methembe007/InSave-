@@ -1,0 +1,121 @@
+---
+# ConfigMap for NGINX rate limiting configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-rate-limit-config
+  namespace: insavein
+data:
+  # Rate limit zones configuration
+  http-snippet: |
+    # Define rate limit zones
+    
+    # Per-user rate limit: 100 requests per minute
+    limit_req_zone $http_authorization zone=per_user:10m rate=100r/m;
+    
+    # Per-IP rate limit: 1000 requests per minute
+    limit_req_zone $binary_remote_addr zone=per_ip:10m rate=1000r/m;
+    
+    # Per-IP connection limit: 10 concurrent connections
+    limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+    
+    # Authentication endpoint rate limit: 5 requests per minute per IP
+    limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=5r/m;
+    
+    # Status code for rate limit exceeded
+    limit_req_status 429;
+    limit_conn_status 429;
+    
+    # Log level for rate limiting
+    limit_req_log_level warn;
+    limit_conn_log_level warn;
+  
+  # Server snippet for applying rate limits
+  server-snippet: |
+    # Apply per-IP connection limit
+    limit_conn conn_per_ip 10;
+    
+    # Apply per-user rate limit with burst
+    limit_req zone=per_user burst=20 nodelay;
+    
+    # Apply per-IP rate limit with burst
+    limit_req zone=per_ip burst=50 nodelay;
+    
+    # Custom error page for rate limiting
+    error_page 429 = @rate_limit_exceeded;
+    
+    location @rate_limit_exceeded {
+      default_type application/json;
+      return 429 '{"error":"Too Many Requests","message":"Rate limit exceeded. Please try again later.","retry_after":60}';
+    }
+  
+  # Location snippet for authentication endpoints
+  auth-location-snippet: |
+    # Stricter rate limit for authentication endpoints
+    limit_req zone=auth_limit burst=2 nodelay;
+---
+# ConfigMap for NGINX security configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-security-config
+  namespace: insavein
+data:
+  # Main NGINX configuration additions
+  main-snippet: |
+    # Hide NGINX version
+    server_tokens off;
+    
+    # Increase hash bucket size for long server names
+    server_names_hash_bucket_size 128;
+    
+    # SSL/TLS configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_session_tickets off;
+    
+    # OCSP stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver_timeout 5s;
+  
+  # HTTP snippet for security headers
+  http-snippet: |
+    # Security headers map
+    map $sent_http_content_type $security_headers {
+      default "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.insavein.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    }
+    
+    # Add security headers to all responses
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()" always;
+  
+  # Server snippet for additional security
+  server-snippet: |
+    # Disable unnecessary HTTP methods
+    if ($request_method !~ ^(GET|POST|PUT|DELETE|OPTIONS|PATCH)$ ) {
+      return 405;
+    }
+    
+    # Block common attack patterns
+    if ($http_user_agent ~* (nmap|nikto|wikto|sf|sqlmap|bsqlbf|w3af|acunetix|havij|appscan)) {
+      return 403;
+    }
+    
+    # Block requests with no user agent
+    if ($http_user_agent = "") {
+      return 403;
+    }
+    
+    # Prevent access to hidden files
+    location ~ /\. {
+      deny all;
+      return 404;
+    }

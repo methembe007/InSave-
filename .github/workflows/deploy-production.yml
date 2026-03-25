@@ -1,0 +1,365 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/insavein
+  KUBE_NAMESPACE: insavein-production
+
+jobs:
+  deploy-production:
+    name: Deploy to Production Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://insavein.com
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace ${{ env.KUBE_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Backup current deployment state
+        run: |
+          mkdir -p backups
+          kubectl get deployments -n ${{ env.KUBE_NAMESPACE }} -o yaml > backups/deployments-backup.yaml
+          echo "Backup created at backups/deployments-backup.yaml"
+
+      - name: Update ConfigMaps and Secrets
+        run: |
+          # Apply ConfigMaps
+          kubectl apply -f k8s/configmap.yaml -n ${{ env.KUBE_NAMESPACE }}
+          
+          # Create secrets from GitHub secrets
+          kubectl create secret generic app-secrets \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET_PRODUCTION }}" \
+            --from-literal=database-url="${{ secrets.DATABASE_URL_PRODUCTION }}" \
+            --from-literal=smtp-password="${{ secrets.SMTP_PASSWORD }}" \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy PostgreSQL (if not exists)
+        run: |
+          if ! kubectl get statefulset postgres -n ${{ env.KUBE_NAMESPACE }} &> /dev/null; then
+            kubectl apply -f k8s/postgres-statefulset.yaml -n ${{ env.KUBE_NAMESPACE }}
+            echo "Waiting for PostgreSQL to be ready..."
+            kubectl wait --for=condition=ready pod -l app=postgres -n ${{ env.KUBE_NAMESPACE }} --timeout=300s
+          fi
+
+      - name: Run database migrations
+        run: |
+          kubectl run migration-job-${{ github.run_number }} \
+            --image=migrate/migrate:latest \
+            --restart=Never \
+            --namespace=${{ env.KUBE_NAMESPACE }} \
+            --env="DATABASE_URL=${{ secrets.DATABASE_URL_PRODUCTION }}" \
+            --command -- migrate -path /migrations -database "$DATABASE_URL" up
+          
+          kubectl wait --for=condition=complete job/migration-job-${{ github.run_number }} -n ${{ env.KUBE_NAMESPACE }} --timeout=300s
+          kubectl delete job migration-job-${{ github.run_number }} -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Deploy Backend Services with Rolling Update
+        run: |
+          SERVICES=(
+            "auth-service"
+            "user-service"
+            "savings-service"
+            "budget-service"
+            "goal-service"
+            "education-service"
+            "notification-service"
+            "analytics-service"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Deploying $service with rolling update..."
+            
+            # Apply or update deployment
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-$service:main-${{ github.sha }} \
+              -n ${{ env.KUBE_NAMESPACE }} || \
+            kubectl apply -f k8s/${service}-deployment.yaml -n ${{ env.KUBE_NAMESPACE }}
+            
+            # Update image tag
+            kubectl set image deployment/$service \
+              $service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-$service:main-${{ github.sha }} \
+              -n ${{ env.KUBE_NAMESPACE }}
+            
+            # Configure rolling update strategy
+            kubectl patch deployment $service -n ${{ env.KUBE_NAMESPACE }} -p '{
+              "spec": {
+                "strategy": {
+                  "type": "RollingUpdate",
+                  "rollingUpdate": {
+                    "maxSurge": "25%",
+                    "maxUnavailable": 0
+                  }
+                }
+              }
+            }'
+          done
+
+      - name: Deploy Frontend with Rolling Update
+        run: |
+          echo "Deploying frontend with rolling update..."
+          kubectl set image deployment/frontend \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }} \
+            -n ${{ env.KUBE_NAMESPACE }} || \
+          kubectl apply -f k8s/frontend-deployment.yaml -n ${{ env.KUBE_NAMESPACE }}
+          
+          kubectl set image deployment/frontend \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }} \
+            -n ${{ env.KUBE_NAMESPACE }}
+          
+          kubectl patch deployment frontend -n ${{ env.KUBE_NAMESPACE }} -p '{
+            "spec": {
+              "strategy": {
+                "type": "RollingUpdate",
+                "rollingUpdate": {
+                  "maxSurge": "25%",
+                  "maxUnavailable": 0
+                }
+              }
+            }
+          }'
+
+      - name: Apply Ingress and Services
+        run: |
+          kubectl apply -f k8s/ingress.yaml -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Wait for rollout to complete
+        run: |
+          SERVICES=(
+            "auth-service"
+            "user-service"
+            "savings-service"
+            "budget-service"
+            "goal-service"
+            "education-service"
+            "notification-service"
+            "analytics-service"
+            "frontend"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Waiting for $service rollout..."
+            if ! kubectl rollout status deployment/$service -n ${{ env.KUBE_NAMESPACE }} --timeout=10m; then
+              echo "❌ Rollout failed for $service"
+              echo "Rolling back $service..."
+              kubectl rollout undo deployment/$service -n ${{ env.KUBE_NAMESPACE }}
+              exit 1
+            fi
+            echo "✅ $service rolled out successfully"
+          done
+
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be fully ready
+          sleep 30
+          
+          # Get the production URL
+          PROD_URL="https://insavein.com"
+          
+          # Test health endpoints
+          echo "Testing health endpoints..."
+          
+          SERVICES=(
+            "auth"
+            "user"
+            "savings"
+            "budget"
+            "goal"
+            "education"
+            "notification"
+            "analytics"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Testing $service health..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/$service/health" || echo "000")
+            if [ "$response" != "200" ]; then
+              echo "❌ $service health check failed with status $response"
+              echo "Rolling back all services..."
+              kubectl rollout undo deployment/$service-service -n ${{ env.KUBE_NAMESPACE }}
+              exit 1
+            fi
+            echo "✅ $service health check passed"
+          done
+          
+          # Test frontend
+          echo "Testing frontend..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" || echo "000")
+          if [ "$response" != "200" ]; then
+            echo "❌ Frontend health check failed with status $response"
+            echo "Rolling back frontend..."
+            kubectl rollout undo deployment/frontend -n ${{ env.KUBE_NAMESPACE }}
+            exit 1
+          fi
+          echo "✅ Frontend health check passed"
+          
+          # Test critical user flows
+          echo "Testing critical user flows..."
+          
+          # Test registration endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$PROD_URL/api/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{}' || echo "000")
+          if [ "$response" != "400" ] && [ "$response" != "200" ]; then
+            echo "❌ Registration endpoint check failed with status $response"
+            exit 1
+          fi
+          echo "✅ Registration endpoint check passed"
+          
+          echo "🎉 All smoke tests passed!"
+
+      - name: Monitor deployment health
+        run: |
+          echo "Monitoring deployment health for 2 minutes..."
+          
+          for i in {1..12}; do
+            echo "Health check iteration $i/12..."
+            
+            # Check pod status
+            UNHEALTHY_PODS=$(kubectl get pods -n ${{ env.KUBE_NAMESPACE }} --field-selector=status.phase!=Running --no-headers 2>/dev/null | wc -l)
+            
+            if [ "$UNHEALTHY_PODS" -gt 0 ]; then
+              echo "⚠️  Warning: $UNHEALTHY_PODS unhealthy pods detected"
+              kubectl get pods -n ${{ env.KUBE_NAMESPACE }}
+            else
+              echo "✅ All pods healthy"
+            fi
+            
+            sleep 10
+          done
+          
+          echo "✅ Deployment health monitoring complete"
+
+      - name: Get deployment status
+        if: always()
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n ${{ env.KUBE_NAMESPACE }}
+          echo ""
+          echo "=== Pods Status ==="
+          kubectl get pods -n ${{ env.KUBE_NAMESPACE }}
+          echo ""
+          echo "=== Services Status ==="
+          kubectl get services -n ${{ env.KUBE_NAMESPACE }}
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events -n ${{ env.KUBE_NAMESPACE }} --sort-by='.lastTimestamp' | tail -30
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "🔄 Deployment failed, initiating rollback..."
+          
+          SERVICES=(
+            "auth-service"
+            "user-service"
+            "savings-service"
+            "budget-service"
+            "goal-service"
+            "education-service"
+            "notification-service"
+            "analytics-service"
+            "frontend"
+          )
+          
+          for service in "${SERVICES[@]}"; do
+            echo "Rolling back $service..."
+            kubectl rollout undo deployment/$service -n ${{ env.KUBE_NAMESPACE }}
+          done
+          
+          echo "⚠️  Rollback initiated for all services"
+
+  notify-deployment:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    steps:
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Production Deployment ${{ needs.deploy-production.result }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Deployment ${{ needs.deploy-production.result }}*\n\n*Repository:* ${{ github.repository }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Status:* ${{ needs.deploy-production.result }}\n*Time:* ${{ github.event.head_commit.timestamp }}\n\n<https://insavein.com|View Production>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ needs.deploy-production.result == 'success' && '✅ Deployment successful!' || '❌ Deployment failed! Check logs immediately.' }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send email notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "🚨 Production Deployment Failed - InSavein Platform"
+          to: ${{ secrets.ALERT_EMAIL }}
+          from: InSavein CI/CD
+          body: |
+            Production deployment has failed!
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            
+            Please check the GitHub Actions logs immediately:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

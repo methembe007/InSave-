@@ -23,6 +23,8 @@ export class ApiClient {
     const token = this.getToken()
     const url = `${this.baseUrl}${endpoint}`
 
+    console.log('[ApiClient] Making request to:', endpoint, 'with token:', !!token)
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
@@ -47,7 +49,12 @@ export class ApiClient {
 
       // Handle 401 Unauthorized
       if (response.status === 401) {
-        this.onUnauthorized()
+        console.error('[ApiClient] 401 Unauthorized for:', endpoint)
+        // Only trigger unauthorized handler if this is an auth endpoint
+        // For other endpoints, just throw the error without clearing tokens
+        if (endpoint.includes('/api/auth/') || endpoint.includes('/api/user/profile')) {
+          this.onUnauthorized()
+        }
         throw new Error('Unauthorized')
       }
 
@@ -73,6 +80,11 @@ export class ApiClient {
       if (retries > 0 && error instanceof TypeError) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
         return this.request<T>(endpoint, options, retries - 1)
+      }
+
+      // Enhance error message for network failures
+      if (error instanceof TypeError) {
+        throw new Error(`Network error: Unable to connect to ${this.baseUrl}. Please ensure the service is running.`)
       }
 
       throw error

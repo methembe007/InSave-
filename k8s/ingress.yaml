@@ -6,25 +6,75 @@ metadata:
   annotations:
     # TLS configuration with cert-manager
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    # Rate limiting
+    
+    # Force SSL redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting - per user (100 req/min) and per IP (1000 req/min)
     nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
     nginx.ingress.kubernetes.io/limit-connections: "10"
-    # Security headers
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    
+    # Global rate limit per IP
+    nginx.ingress.kubernetes.io/global-rate-limit: "1000"
+    nginx.ingress.kubernetes.io/global-rate-limit-window: "1m"
+    
+    # Rate limit response
+    nginx.ingress.kubernetes.io/limit-rate-after: "0"
+    nginx.ingress.kubernetes.io/limit-rate: "0"
+    
+    # Security headers - comprehensive protection
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      # Prevent clickjacking attacks
       more_set_headers "X-Frame-Options: DENY";
+      
+      # Prevent MIME type sniffing
       more_set_headers "X-Content-Type-Options: nosniff";
+      
+      # Enable XSS protection
       more_set_headers "X-XSS-Protection: 1; mode=block";
-      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
-      more_set_headers "Content-Security-Policy: default-src 'self'";
+      
+      # HTTP Strict Transport Security (HSTS) - 1 year with subdomains
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
+      
+      # Content Security Policy - restrict resource loading
+      more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.insavein.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+      
+      # Referrer Policy - control referrer information
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      
+      # Permissions Policy - control browser features
+      more_set_headers "Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()";
+      
+      # Remove server header for security
+      more_clear_headers "Server";
+      
+      # Custom rate limit response
+      if ($limit_req = "rejected") {
+        return 429 '{"error":"Too Many Requests","message":"Rate limit exceeded. Please try again later."}';
+      }
+    
     # CORS configuration
     nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://insavein.com"
-    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
-    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://insavein.com,https://www.insavein.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, X-Requested-With"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
+    
     # Connection settings
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    
+    # Body size limit (10MB)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # Buffer settings
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
 spec:
   ingressClassName: nginx
   tls:
